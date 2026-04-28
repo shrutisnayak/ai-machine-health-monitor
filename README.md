@@ -45,18 +45,4 @@ An interactive dashboard that simulates industrial machine monitoring using AI a
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
-
-
 ---
-
-# 🔧 Step 5: Push to GitHub
-
-Run this in your project folder:
-
-```bash
-git init
-git add .
-git commit -m "Initial commit - AI Machine Health Monitor"
-git branch -M main
-git remote add origin https://github.com/shrutisnayak/ai-machine-health-monitor.git
-git push -u origin main
