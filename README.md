@@ -40,6 +40,8 @@ An interactive dashboard that simulates industrial machine monitoring using AI a
 
 ---
 
+⚠️ Note: The app may take a few seconds to wake up due to cloud hosting (free tier).
+
 ## ▶️ How to Run
 
 ```bash
