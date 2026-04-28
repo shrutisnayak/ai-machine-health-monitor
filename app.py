@@ -39,7 +39,7 @@ body {
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🛠️ AI-Powered Machine Health Monitor")
+st.title("🛠️ AI-Powered Predictive Maintenance Dashboard")
 
 # -------------------------------
 # SIDEBAR
