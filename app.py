@@ -4,6 +4,12 @@ import time
 from sklearn.ensemble import IsolationForest
 import matplotlib.pyplot as plt
 import pandas as pd
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
+from datetime import datetime
+import os
 
 # -------------------------------
 # SESSION STATE INIT
@@ -156,6 +162,129 @@ if st.button("▶️ Run Simulation"):
 # -------------------------------
 # SHOW ANALYTICS (PERSISTENT)
 # -------------------------------
+def generate_pdf(df, anomalies_df, machine_id="MCH-101", location="Plant"):
+    file_path = "machine_report.pdf"
+
+    doc = SimpleDocTemplate(file_path, pagesize=A4)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # -------------------------
+    # HEADER
+    # -------------------------
+    elements.append(Paragraph("AI-Powered Machine Health Report", styles['Title']))
+    elements.append(Spacer(1, 8))
+
+    elements.append(Paragraph(f"<b>Machine ID:</b> {machine_id}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Location:</b> {location}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Generated On:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+    elements.append(Spacer(1, 12))
+
+    # -------------------------
+    # HEALTH SUMMARY
+    # -------------------------
+    total = len(df)
+    anomalies = len(anomalies_df)
+    health_score = 100 - (anomalies / total) * 100
+
+    summary_data = [
+        ["Metric", "Value"],
+        ["Total Readings", total],
+        ["Anomalies Detected", anomalies],
+        ["Health Score", f"{health_score:.1f}%"]
+    ]
+
+    table = Table(summary_data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.grey),
+        ('TEXTCOLOR',(0,0),(-1,0),colors.whitesmoke),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('ALIGN',(0,0),(-1,-1),'CENTER')
+    ]))
+
+    elements.append(Paragraph("System Summary", styles['Heading2']))
+    elements.append(table)
+    elements.append(Spacer(1, 12))
+
+    # -------------------------
+    # CHARTS
+    # -------------------------
+
+    # Temperature Trend
+    plt.figure()
+    plt.plot(df["Temperature"], label="Temperature")
+    plt.plot(df["Temp_MA"], label="Moving Avg")
+    plt.legend()
+    plt.title("Temperature Trend")
+    temp_chart = "temp_chart.png"
+    plt.savefig(temp_chart)
+    plt.close()
+
+    elements.append(Paragraph("Temperature Trend", styles['Heading3']))
+    elements.append(Image(temp_chart, width=400, height=220))
+    elements.append(Spacer(1, 10))
+
+    # Distribution
+    plt.figure()
+    plt.hist(df["Temperature"], bins=20)
+    plt.title("Temperature Distribution")
+    dist_chart = "dist_chart.png"
+    plt.savefig(dist_chart)
+    plt.close()
+
+    elements.append(Paragraph("Temperature Distribution", styles['Heading3']))
+    elements.append(Image(dist_chart, width=400, height=220))
+    elements.append(Spacer(1, 10))
+
+    # Scatter
+    plt.figure()
+    plt.scatter(df["Temperature"], df["Vibration"])
+    plt.xlabel("Temperature")
+    plt.ylabel("Vibration")
+    plt.title("Temp vs Vibration")
+    scatter_chart = "scatter_chart.png"
+    plt.savefig(scatter_chart)
+    plt.close()
+
+    elements.append(Paragraph("Sensor Correlation", styles['Heading3']))
+    elements.append(Image(scatter_chart, width=400, height=220))
+    elements.append(Spacer(1, 12))
+
+    # -------------------------
+    # CRITICAL EVENTS TABLE
+    # -------------------------
+    elements.append(Paragraph("Critical Events (Sample)", styles['Heading2']))
+
+    if not anomalies_df.empty:
+        sample = anomalies_df.head(5)
+
+        table_data = [["Index", "Temp", "Vibration"]]
+        for idx, row in sample.iterrows():
+            table_data.append([idx, f"{row['Temperature']:.2f}", f"{row['Vibration']:.2f}"])
+
+        event_table = Table(table_data)
+        event_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.red),
+            ('TEXTCOLOR',(0,0),(-1,0),colors.whitesmoke),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ]))
+
+        elements.append(event_table)
+    else:
+        elements.append(Paragraph("No anomalies detected.", styles['Normal']))
+
+    # -------------------------
+    # BUILD PDF
+    # -------------------------
+    doc.build(elements)
+
+    # cleanup images
+    for f in [temp_chart, dist_chart, scatter_chart]:
+        if os.path.exists(f):
+            os.remove(f)
+
+    return file_path
+  
 if st.session_state.data_ready:
 
     df = st.session_state.df
@@ -206,6 +335,16 @@ if st.session_state.data_ready:
         file_name="machine_health_report.csv",
         mime="text/csv",
     )
+
+    pdf_file = generate_pdf(df,anomalies_df,machine_id=machine_id,location=location)
+
+    with open(pdf_file, "rb") as f:
+        st.download_button(
+            label="📄 Download PDF Report",
+            data=f,
+            file_name="machine_report.pdf",
+            mime="application/pdf"
+        )
 
 else:
     st.info("Click 'Run Simulation' to start monitoring")
